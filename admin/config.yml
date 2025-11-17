@@ -1,0 +1,30 @@
+backend:
+  name: git-gateway
+  branch: main
+
+# Alternative: Use GitHub backend directly (requires OAuth app setup)
+# backend:
+#   name: github
+#   repo: LEGrama/agtechweb
+#   branch: main
+
+media_folder: "images/gallery"
+public_folder: "/images/gallery"
+
+collections:
+  - name: "gallery"
+    label: "Gallery Posts"
+    folder: "_posts/gallery"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    fields:
+      - {label: "Title", name: "title", widget: "string"}
+      - {label: "Publish Date", name: "date", widget: "datetime"}
+      - {label: "Author", name: "author", widget: "string", default: "AgTech Lab"}
+      - {label: "Category", name: "category", widget: "select", options: ["lab", "event", "research"]}
+      - {label: "Thumbnail Image", name: "thumbnail", widget: "image"}
+      - {label: "Gallery Images", name: "images", widget: "list", field: {label: "Image", name: "image", widget: "image"}}
+      - {label: "Description", name: "description", widget: "text"}
+      - {label: "Content", name: "body", widget: "markdown"}
+      - {label: "Tags", name: "tags", widget: "list", required: false}
+      - {label: "Published", name: "published", widget: "boolean", default: true}

@@ -39,7 +39,7 @@
         </div>
     </section>
 
-    <!-- Gallery Filter -->
+    <!-- Gallery Controls -->
     <section class="gallery-filter">
         <div class="container">
             <div class="filter-buttons">
@@ -51,10 +51,30 @@
         </div>
     </section>
 
-    <!-- Gallery Grid -->
+    <!-- Search and View Controls -->
     <section class="gallery-grid">
         <div class="container">
-            <div class="gallery-items">
+            <div class="gallery-controls">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search posts...">
+                </div>
+                <div class="view-toggle">
+                    <button class="view-btn" data-view="grid" title="Grid View">
+                        <i class="fas fa-th"></i> Grid
+                    </button>
+                    <button class="view-btn active" data-view="list" title="List View">
+                        <i class="fas fa-list"></i> List
+                    </button>
+                </div>
+                <select class="sort-select" id="sortSelect">
+                    <option value="date-desc">Latest First</option>
+                    <option value="date-asc">Oldest First</option>
+                    <option value="title-asc">Title A-Z</option>
+                    <option value="title-desc">Title Z-A</option>
+                </select>
+            </div>
+
+            <div class="gallery-items gallery-list">
                 <!-- Laboratory Photos -->
                 <div class="gallery-item" data-category="lab">
                     <div class="gallery-image">
@@ -118,6 +138,13 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination">
+                <button class="page-btn" id="prevPage" disabled>&laquo; Previous</button>
+                <div id="pageNumbers"></div>
+                <button class="page-btn" id="nextPage">Next &raquo;</button>
+            </div>
         </div>
     </section>
 
@@ -126,6 +153,25 @@
         <span class="lightbox-close">&times;</span>
         <img class="lightbox-content" id="lightbox-img">
         <div class="lightbox-caption" id="lightbox-caption"></div>
+    </div>
+
+    <!-- Post Detail Modal -->
+    <div id="postModal" class="post-modal">
+        <div class="post-modal-content">
+            <button class="post-modal-close">&times;</button>
+            <div class="post-modal-header">
+                <h2 id="modalTitle"></h2>
+                <div class="post-modal-meta">
+                    <span><i class="fas fa-calendar"></i> <span id="modalDate"></span></span>
+                    <span><i class="fas fa-user"></i> <span id="modalAuthor"></span></span>
+                    <span><i class="fas fa-folder"></i> <span id="modalCategory"></span></span>
+                </div>
+            </div>
+            <div class="post-modal-body">
+                <div class="post-modal-images" id="modalImages"></div>
+                <div class="post-modal-text" id="modalContent"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Footer -->
@@ -145,5 +191,19 @@
 
     <script src="js/main.js"></script>
     <script src="js/gallery.js"></script>
+
+    <!-- Netlify Identity Widget (for CMS authentication) -->
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <script>
+        if (window.netlifyIdentity) {
+            window.netlifyIdentity.on("init", user => {
+                if (!user) {
+                    window.netlifyIdentity.on("login", () => {
+                        document.location.href = "/admin/";
+                    });
+                }
+            });
+        }
+    </script>
 </body>
 </html> 

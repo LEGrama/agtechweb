@@ -1,209 +1,441 @@
+// Gallery Board System with Netlify CMS Integration
 document.addEventListener('DOMContentLoaded', async function() {
-    // Load gallery data from JSON files
-    const galleryContainer = document.querySelector('.gallery-grid');
+    const galleryContainer = document.querySelector('.gallery-items');
     const filterButtons = document.querySelectorAll('.filter-btn');
-    let galleryData = [];
+    const viewButtons = document.querySelectorAll('.view-btn');
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    const pagination = document.getElementById('pagination');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    const pageNumbersContainer = document.getElementById('pageNumbers');
+
+    let allPosts = [];
+    let filteredPosts = [];
     let currentFilter = 'all';
+    let currentView = 'list';
+    let currentSort = 'date-desc';
+    let currentPage = 1;
+    const postsPerPage = 10;
 
-    // Function to load all gallery JSON files
-    async function loadGalleryData() {
+    // Initialize: Load posts from Netlify CMS markdown files
+    async function loadPosts() {
         try {
-            // List of gallery JSON files
-            const galleryFiles = [
-                '2024-11-01-asabe-presentation.json',
-                '2024-11-02-bug-monitoring.json',
-                '2024-11-03-festival.json',
-                '2024-11-04-chamdo-research.json',
-                '2024-11-05-chamdog-research.json'
-            ];
+            // Try to fetch posts from _posts/gallery directory
+            const response = await fetch('_posts/gallery/');
 
-            const promises = galleryFiles.map(async (file) => {
-                try {
-                    const response = await fetch(`_data/gallery/${file}`);
-                    if (response.ok) {
-                        return await response.json();
-                    }
-                    return null;
-                } catch (error) {
-                    console.error(`Error loading ${file}:`, error);
-                    return null;
-                }
-            });
+            // If the fetch fails or directory listing isn't available,
+            // fall back to static data
+            if (!response.ok) {
+                console.log('Using static gallery data');
+                loadStaticPosts();
+                return;
+            }
 
-            const results = await Promise.all(promises);
-            galleryData = results.filter(item => item && item.published);
-
-            // Sort by date (newest first)
-            galleryData.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            renderGallery();
+            // Parse markdown files (this would need server-side support)
+            // For now, we'll use static data with the structure ready for CMS
+            loadStaticPosts();
         } catch (error) {
-            console.error('Error loading gallery data:', error);
-            // Fallback: keep existing static HTML gallery
+            console.error('Error loading posts:', error);
+            loadStaticPosts();
         }
     }
 
-    // Function to render gallery from JSON data
+    // Load static posts (fallback and initial data)
+    function loadStaticPosts() {
+        allPosts = [
+            {
+                id: 'post-001',
+                title: 'Laboratory Environment',
+                date: '2024-11-05',
+                author: 'AgTech Lab',
+                category: 'lab',
+                thumbnail: 'images/gallery/chamdog_to.jpg',
+                images: ['images/gallery/chamdog_to.jpg'],
+                description: 'AgTech Research Lab workspace and facilities',
+                content: 'Our state-of-the-art laboratory provides researchers with cutting-edge equipment and a collaborative environment for agricultural technology innovation.',
+                tags: ['laboratory', 'facilities'],
+                published: true
+            },
+            {
+                id: 'post-002',
+                title: 'ASABE Conference Presentation',
+                date: '2024-11-04',
+                author: 'AgTech Lab',
+                category: 'event',
+                thumbnail: 'images/gallery/ASABE_pr.JPG',
+                images: ['images/gallery/ASABE_pr.JPG'],
+                description: 'Presenting our latest research at ASABE Annual International Meeting',
+                content: 'Our team presented groundbreaking research on precision agriculture and autonomous systems at the ASABE Annual International Meeting. The presentation highlighted our novel approaches to crop monitoring and automated decision-making systems.',
+                tags: ['conference', 'presentation', 'ASABE'],
+                published: true
+            },
+            {
+                id: 'post-003',
+                title: 'Bug Monitoring System Setup',
+                date: '2024-11-03',
+                author: 'AgTech Lab',
+                category: 'event',
+                thumbnail: 'images/gallery/bug_monitering.jpg',
+                images: ['images/gallery/bug_monitering.jpg'],
+                description: 'Installing and testing our automated pest monitoring system in the field',
+                content: 'Field deployment of our AI-powered bug monitoring system. This innovative system uses computer vision and machine learning to identify and track pest populations in real-time, helping farmers make data-driven pest management decisions.',
+                tags: ['monitoring', 'AI', 'field-work'],
+                published: true
+            },
+            {
+                id: 'post-004',
+                title: 'Lab Festival Participation',
+                date: '2024-11-02',
+                author: 'AgTech Lab',
+                category: 'event',
+                thumbnail: 'images/gallery/chamdog_fes.JPG',
+                images: ['images/gallery/chamdog_fes.JPG'],
+                description: 'AgTech Lab participation in university research festival',
+                content: 'Our lab participated in the annual university research festival, showcasing our latest projects and engaging with students and faculty from across campus. Great opportunity to share our work and inspire the next generation of agricultural technology researchers.',
+                tags: ['festival', 'outreach', 'community'],
+                published: true
+            },
+            {
+                id: 'post-005',
+                title: 'Field Research Activities',
+                date: '2024-11-01',
+                author: 'AgTech Lab',
+                category: 'research',
+                thumbnail: 'images/gallery/chamdo_lo.JPG',
+                images: ['images/gallery/chamdo_lo.JPG'],
+                description: 'Conducting field experiments and data collection',
+                content: 'Field research campaign focusing on crop growth analysis and environmental monitoring. Our team collected extensive data on plant health indicators, soil conditions, and microclimate variations to validate our predictive models.',
+                tags: ['field-research', 'data-collection', 'experiments'],
+                published: true
+            }
+        ];
+
+        filteredPosts = [...allPosts];
+        sortPosts();
+        renderGallery();
+    }
+
+    // Sort posts based on selected criteria
+    function sortPosts() {
+        filteredPosts.sort((a, b) => {
+            switch (currentSort) {
+                case 'date-desc':
+                    return new Date(b.date) - new Date(a.date);
+                case 'date-asc':
+                    return new Date(a.date) - new Date(b.date);
+                case 'title-asc':
+                    return a.title.localeCompare(b.title);
+                case 'title-desc':
+                    return b.title.localeCompare(a.title);
+                default:
+                    return 0;
+            }
+        });
+    }
+
+    // Filter posts
+    function filterPosts() {
+        filteredPosts = allPosts.filter(post => {
+            // Category filter
+            const categoryMatch = currentFilter === 'all' || post.category === currentFilter;
+
+            // Search filter
+            const searchTerm = searchInput.value.toLowerCase();
+            const searchMatch = !searchTerm ||
+                post.title.toLowerCase().includes(searchTerm) ||
+                post.description.toLowerCase().includes(searchTerm) ||
+                post.content.toLowerCase().includes(searchTerm) ||
+                post.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+
+            return categoryMatch && searchMatch && post.published;
+        });
+
+        sortPosts();
+        currentPage = 1;
+        renderGallery();
+    }
+
+    // Render gallery based on current view
     function renderGallery() {
-        if (!galleryContainer || galleryData.length === 0) {
-            console.log('Using static gallery HTML');
-            setupLightbox();
+        const startIndex = (currentPage - 1) * postsPerPage;
+        const endIndex = startIndex + postsPerPage;
+        const postsToShow = filteredPosts.slice(startIndex, endIndex);
+
+        if (currentView === 'list') {
+            renderListView(postsToShow);
+        } else {
+            renderGridView(postsToShow);
+        }
+
+        renderPagination();
+    }
+
+    // Render list view
+    function renderListView(posts) {
+        galleryContainer.className = 'gallery-items gallery-list';
+        galleryContainer.innerHTML = posts.map(post => `
+            <div class="gallery-list-item" data-post-id="${post.id}">
+                <div class="list-thumbnail">
+                    <img src="${post.thumbnail}" alt="${post.title}" loading="lazy">
+                </div>
+                <div class="list-content">
+                    <div class="list-header">
+                        <span class="category-badge">${getCategoryName(post.category)}</span>
+                        <h3>${post.title}</h3>
+                        <div class="list-meta">
+                            <span><i class="fas fa-calendar"></i> ${formatDate(post.date)}</span>
+                            <span><i class="fas fa-user"></i> ${post.author}</span>
+                        </div>
+                    </div>
+                    <p class="list-description">${post.description}</p>
+                    <div class="list-footer">
+                        ${post.tags.map(tag => `<span class="list-tag">${tag}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        attachListItemClickHandlers();
+    }
+
+    // Render grid view
+    function renderGridView(posts) {
+        galleryContainer.className = 'gallery-items';
+        galleryContainer.innerHTML = posts.map(post => `
+            <div class="gallery-item" data-category="${post.category}" data-post-id="${post.id}">
+                <div class="gallery-image">
+                    <img src="${post.thumbnail}" alt="${post.title}" loading="lazy">
+                    <div class="gallery-overlay">
+                        <h3>${post.title}</h3>
+                        <p>${post.description}</p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        attachListItemClickHandlers();
+    }
+
+    // Attach click handlers to items
+    function attachListItemClickHandlers() {
+        const items = document.querySelectorAll('.gallery-list-item, .gallery-item');
+        items.forEach(item => {
+            item.addEventListener('click', () => {
+                const postId = item.dataset.postId;
+                const post = allPosts.find(p => p.id === postId);
+                if (post) {
+                    showPostModal(post);
+                }
+            });
+        });
+    }
+
+    // Show post detail modal
+    function showPostModal(post) {
+        const modal = document.getElementById('postModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDate = document.getElementById('modalDate');
+        const modalAuthor = document.getElementById('modalAuthor');
+        const modalCategory = document.getElementById('modalCategory');
+        const modalImages = document.getElementById('modalImages');
+        const modalContent = document.getElementById('modalContent');
+
+        modalTitle.textContent = post.title;
+        modalDate.textContent = formatDate(post.date);
+        modalAuthor.textContent = post.author;
+        modalCategory.textContent = getCategoryName(post.category);
+
+        modalImages.innerHTML = post.images.map(img => `
+            <img src="${img}" alt="${post.title}" onclick="openLightbox('${img}', '${post.title}')">
+        `).join('');
+
+        modalContent.innerHTML = post.content;
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close post modal
+    function closePostModal() {
+        const modal = document.getElementById('postModal');
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // Render pagination
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+
+        // Update prev/next buttons
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+        // Render page numbers
+        pageNumbersContainer.innerHTML = '';
+
+        if (totalPages <= 1) {
+            pagination.style.display = 'none';
             return;
         }
 
-        galleryContainer.innerHTML = '';
+        pagination.style.display = 'flex';
 
-        galleryData.forEach(item => {
-            if (currentFilter === 'all' || item.category === currentFilter) {
-                const galleryItem = createGalleryItem(item);
-                galleryContainer.appendChild(galleryItem);
+        for (let i = 1; i <= totalPages; i++) {
+            if (
+                i === 1 ||
+                i === totalPages ||
+                (i >= currentPage - 1 && i <= currentPage + 1)
+            ) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', () => {
+                    currentPage = i;
+                    renderGallery();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+                pageNumbersContainer.appendChild(pageBtn);
+            } else if (
+                i === currentPage - 2 ||
+                i === currentPage + 2
+            ) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = '...';
+                ellipsis.style.padding = '0.5rem';
+                pageNumbersContainer.appendChild(ellipsis);
             }
+        }
+    }
+
+    // Helper functions
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
-
-        setupLightbox();
     }
 
-    // Function to create gallery item HTML
-    function createGalleryItem(data) {
-        const item = document.createElement('div');
-        item.className = 'gallery-item';
-        item.setAttribute('data-category', data.category);
-        item.style.animation = 'fadeIn 0.5s ease forwards';
-
-        item.innerHTML = `
-            <div class="gallery-image">
-                <img src="${data.image}"
-                     alt="${data.alt}"
-                     loading="lazy">
-                <div class="gallery-overlay">
-                    <h3>${data.title}</h3>
-                    <p>${data.description}</p>
-                </div>
-            </div>
-        `;
-
-        return item;
+    function getCategoryName(category) {
+        const categories = {
+            'lab': 'Laboratory',
+            'event': 'Events',
+            'research': 'Research Activities'
+        };
+        return categories[category] || category;
     }
 
-    // 필터 버튼 클릭 이벤트
+    // Event listeners
     filterButtons.forEach(button => {
         button.addEventListener('click', () => {
-            // 활성화된 버튼 스타일 변경
             filterButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-
-            currentFilter = button.getAttribute('data-filter');
-
-            if (galleryData.length > 0) {
-                // Dynamic gallery: re-render
-                renderGallery();
-            } else {
-                // Static gallery: use existing filtering logic
-                const galleryItems = document.querySelectorAll('.gallery-item');
-                galleryItems.forEach(item => {
-                    if (currentFilter === 'all' || item.getAttribute('data-category') === currentFilter) {
-                        item.style.display = 'block';
-                        item.style.animation = 'fadeIn 0.5s ease forwards';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-            }
+            currentFilter = button.dataset.filter;
+            filterPosts();
         });
     });
 
-    // Lightbox setup function
-    function setupLightbox() {
+    viewButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            viewButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            currentView = button.dataset.view;
+            renderGallery();
+        });
+    });
+
+    searchInput.addEventListener('input', debounce(filterPosts, 300));
+
+    sortSelect.addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        sortPosts();
+        renderGallery();
+    });
+
+    prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderGallery();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+
+    nextPageBtn.addEventListener('click', () => {
+        const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderGallery();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+
+    // Post modal close handlers
+    const postModalClose = document.querySelector('.post-modal-close');
+    const postModal = document.getElementById('postModal');
+
+    if (postModalClose) {
+        postModalClose.addEventListener('click', closePostModal);
+    }
+
+    if (postModal) {
+        postModal.addEventListener('click', (e) => {
+            if (e.target === postModal) {
+                closePostModal();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && postModal.classList.contains('active')) {
+            closePostModal();
+        }
+    });
+
+    // Lightbox functionality
+    window.openLightbox = function(imageSrc, caption) {
         const lightbox = document.getElementById('lightbox');
         const lightboxImg = document.getElementById('lightbox-img');
         const lightboxCaption = document.getElementById('lightbox-caption');
-        const lightboxClose = document.querySelector('.lightbox-close');
 
-        // Lightbox 요소들이 존재하는지 확인
-        if (!lightbox || !lightboxImg || !lightboxCaption) {
-            console.error('Lightbox elements not found');
-            return;
+        if (lightbox && lightboxImg) {
+            lightboxImg.src = imageSrc;
+            lightboxCaption.textContent = caption;
+            lightbox.classList.add('active');
         }
+    };
 
-        // lightbox 닫기 함수
-        function closeLightbox() {
-            if (lightbox) {
-                lightbox.classList.remove('active');
-                document.body.style.overflow = ''; // 스크롤 복원
-            }
-        }
+    const lightbox = document.getElementById('lightbox');
+    const lightboxClose = document.querySelector('.lightbox-close');
 
-        // 갤러리 이미지 클릭 시 lightbox 열기
-        const galleryItems = document.querySelectorAll('.gallery-item');
-        galleryItems.forEach(item => {
-            const img = item.querySelector('.gallery-image img');
-            const overlay = item.querySelector('.gallery-overlay');
-
-            if (!img || !overlay) return;
-
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                // 이미지 소스 설정
-                lightboxImg.src = img.src;
-                lightboxImg.alt = img.alt || '';
-
-                // 캡션 설정
-                const title = overlay.querySelector('h3');
-                const subtitle = overlay.querySelector('p');
-
-                if (title && subtitle) {
-                    lightboxCaption.innerHTML = `<strong>${title.textContent}</strong><br>${subtitle.textContent}`;
-                } else if (title) {
-                    lightboxCaption.innerHTML = `<strong>${title.textContent}</strong>`;
-                } else {
-                    lightboxCaption.innerHTML = '';
-                }
-
-                // Lightbox 표시
-                lightbox.classList.add('active');
-                document.body.style.overflow = 'hidden'; // 스크롤 방지
-            });
+    if (lightboxClose) {
+        lightboxClose.addEventListener('click', () => {
+            lightbox.classList.remove('active');
         });
+    }
 
-        // 이미지 로딩 최적화
-        const images = document.querySelectorAll('.gallery-image img');
-        images.forEach(img => {
-            img.addEventListener('load', function() {
-                this.classList.add('loaded');
-            });
-        });
-
-        // lightbox 닫기 버튼
-        if (lightboxClose) {
-            lightboxClose.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                closeLightbox();
-            });
-        }
-
-        // lightbox 배경 클릭 시 닫기
+    if (lightbox) {
         lightbox.addEventListener('click', (e) => {
-            if (e.target === lightbox || e.target === lightboxImg) {
-                closeLightbox();
-            }
-        });
-
-        // ESC 키로 닫기
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && lightbox && lightbox.classList.contains('active')) {
-                closeLightbox();
+            if (e.target === lightbox) {
+                lightbox.classList.remove('active');
             }
         });
     }
 
-    // Initialize: Try to load JSON data, fallback to static HTML
-    await loadGalleryData();
-
-    // If no JSON data loaded, setup lightbox for static gallery
-    if (galleryData.length === 0) {
-        setupLightbox();
+    // Debounce helper
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
+
+    // Initialize
+    await loadPosts();
 });
